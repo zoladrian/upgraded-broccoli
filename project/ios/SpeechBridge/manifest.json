@@ -1,0 +1,17 @@
+{
+  "name": "SpeechBridge",
+  "version": "1.0.0",
+  "description": "iOS speech recognition and synthesis bridge for Godot",
+  "author": "Example",
+  "modules": [
+    {
+      "name": "SpeechBridge",
+      "class_name": "SpeechBridge",
+      "languages": ["Swift"],
+      "dependencies": [
+        "Speech",
+        "AVFoundation"
+      ]
+    }
+  ]
+}

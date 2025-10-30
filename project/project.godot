@@ -1,0 +1,22 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section]
+;   param=value
+;   
+; Sections can be repeated to store arrays.
+
+config_version=5
+
+[application]
+config/name="CrossPlatformSpeech"
+config/description="Godot 4 sample integrating native speech APIs"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.0", "ForwardPlus", "Mobile")
+
+[rendering]
+quality/driver/driver_name="opengl3"
+2d/snapping/use_gpu_pixel_snap=true
+textures/vram_compression/import_etc2_astc=true
