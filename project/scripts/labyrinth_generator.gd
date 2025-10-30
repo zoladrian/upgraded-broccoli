@@ -117,6 +117,10 @@ func _create_checkpoints(path: Array, tasks: Array) -> Array:
             "repetitions": repetitions,
             "remaining": repetitions,
             "completed": false,
+            "key_phonemes": task.get("key_phonemes", []),
+            "allowed_substitutions": task.get("allowed_substitutions", {}),
+            "min_text_ratio": task.get("min_text_ratio", 0.65),
+            "min_phoneme_score": task.get("min_phoneme_score", 0.55),
         })
         index = min(path.size() - 1, index + step)
     return checkpoints
