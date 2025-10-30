@@ -3,14 +3,30 @@ extends Node2D
 const SpeechService = preload("res://scripts/speech_service.gd")
 const LabyrinthGenerator = preload("res://scripts/labyrinth_generator.gd")
 const DogController = preload("res://scripts/dog_controller.gd")
+const TherapyDatabase = preload("res://scripts/data/database.gd")
+const TherapyModels = preload("res://scripts/data/models.gd")
+const SessionLogger = preload("res://scripts/session_logger.gd")
+
+const DEFAULT_WORDS := [
+    {"word_id": "mama", "text": "mama", "phonemes": ["m", "a"], "difficulty": 1, "repetitions": 2},
+    {"word_id": "lama", "text": "lama", "phonemes": ["l", "a", "m", "a"], "difficulty": 2, "repetitions": 1},
+    {"word_id": "rama", "text": "rama", "phonemes": ["r", "a", "m", "a"], "difficulty": 2, "repetitions": 2},
+]
 
 @onready var tile_map: TileMap = $Labyrinth/TileMap
 @onready var dog: DogController = $Dog
 @onready var prompt_label: Label = $PromptLabel
 @onready var status_label: Label = $StatusLabel
+@onready var scenario_button: Button = $UI/ScenarioButton
+@onready var scenario_editor: ScenarioEditor = $UI/ScenarioEditor
 
 var speech_service: SpeechService = SpeechService.new()
 var generator: LabyrinthGenerator = LabyrinthGenerator.new()
+var database: TherapyDatabase = TherapyDatabase.new()
+var session_logger: SessionLogger = SessionLogger.new()
+
+var active_scenario: TherapyModels.Scenario
+var words_by_id: Dictionary = {}
 
 var recognizing := false
 var labyrinth_data: Dictionary
@@ -29,13 +45,123 @@ func _ready() -> void:
     speech_service.events.connect(_on_speech_event)
     speech_service.initialize()
     dog.path_completed.connect(_on_dog_path_completed)
+    add_child(session_logger)
+    scenario_button.pressed.connect(_toggle_scenario_editor)
+    scenario_editor.scenario_saved.connect(_on_scenario_saved)
 
-    labyrinth_data = generator.generate(Vector2i(6, 6), _default_tasks())
+    _load_words_index()
+    _load_initial_scenario()
+
+func _load_words_index() -> void:
+    words_by_id.clear()
+    var words := database.load_words()
+    if words.is_empty():
+        for data in DEFAULT_WORDS:
+            var word := TherapyModels.TherapyWord.new()
+            word.id = data["word_id"]
+            word.display_text = data["text"]
+            word.phonemes = data["phonemes"]
+            word.difficulty = data["difficulty"]
+            database.save_word(word)
+        words = database.load_words()
+    for word in words:
+        words_by_id[word.id] = word
+
+func _load_initial_scenario() -> void:
+    var scenarios := database.load_scenarios()
+    if scenarios.is_empty():
+        active_scenario = TherapyModels.Scenario.new("scenario_default", "Scenariusz domyślny")
+        active_scenario.difficulty = 1
+        var index := 0
+        active_scenario.nodes = []
+        for data in DEFAULT_WORDS:
+            var node := TherapyModels.ScenarioNode.new("node_%d" % (index + 1), index, data["word_id"])
+            active_scenario.nodes.append(node)
+            index += 1
+        database.save_scenario(active_scenario, OS.get_environment("USER"), "Scenariusz domyślny")
+    else:
+        active_scenario = scenarios[0]
+        for scenario in scenarios:
+            if scenario.updated_at > active_scenario.updated_at:
+                active_scenario = scenario
+    _build_labyrinth_for_scenario()
+    session_logger.set_scenario(active_scenario.id)
+    _update_editor_with_scenario()
+
+func _build_labyrinth_for_scenario() -> void:
+    labyrinth_data = generator.generate(Vector2i(6, 6), _tasks_from_scenario(active_scenario))
     path = labyrinth_data.get("path", [])
     checkpoints = labyrinth_data.get("checkpoints", [])
     _configure_tiles()
     _build_labyrinth_tiles(labyrinth_data.get("grid", []))
     _prepare_initial_state()
+
+func _tasks_from_scenario(scenario: TherapyModels.Scenario) -> Array:
+    var tasks: Array = []
+    for node in scenario.nodes:
+        var word := words_by_id.get(node.word_id)
+        if word == null:
+            continue
+        var repetitions := _default_repetitions(node.word_id)
+        if repetitions <= 0:
+            repetitions = max(1, scenario.difficulty)
+        tasks.append({
+            "word_id": node.word_id,
+            "text": word.display_text,
+            "repetitions": repetitions,
+        })
+    if tasks.is_empty():
+        for data in DEFAULT_WORDS:
+            tasks.append({
+                "word_id": data["word_id"],
+                "text": data["text"],
+                "repetitions": data["repetitions"],
+            })
+    return tasks
+
+func _default_repetitions(word_id: String) -> int:
+    for data in DEFAULT_WORDS:
+        if data["word_id"] == word_id:
+            return data.get("repetitions", 1)
+    return 1
+
+func _toggle_scenario_editor() -> void:
+    scenario_editor.visible = not scenario_editor.visible
+    if scenario_editor.visible:
+        scenario_editor.set_scenario(_clone_scenario(active_scenario))
+
+func _on_scenario_saved(data: Dictionary) -> void:
+    active_scenario = _scenario_from_dict(data)
+    session_logger.set_scenario(active_scenario.id)
+    _load_words_index()
+    _build_labyrinth_for_scenario()
+    _update_editor_with_scenario()
+
+func _update_editor_with_scenario() -> void:
+    if scenario_editor.visible:
+        scenario_editor.set_scenario(_clone_scenario(active_scenario))
+
+func _scenario_from_dict(data: Dictionary) -> TherapyModels.Scenario:
+    var scenario := TherapyModels.Scenario.new(data.get("id", ""), data.get("name", ""))
+    scenario.difficulty = data.get("difficulty", 1)
+    scenario.created_at = data.get("created_at", Time.get_unix_time_from_system())
+    scenario.updated_at = data.get("updated_at", scenario.created_at)
+    scenario.notes_after_session = data.get("notes_after_session", "")
+    scenario.nodes = []
+    for node_dict in data.get("nodes", []):
+        scenario.nodes.append(TherapyModels.ScenarioNode.new(node_dict.get("id", ""), node_dict.get("order_index", 0), node_dict.get("word_id", "")))
+    return scenario
+
+func _clone_scenario(source: TherapyModels.Scenario) -> TherapyModels.Scenario:
+    var clone := TherapyModels.Scenario.new(source.id, source.name)
+    clone.difficulty = source.difficulty
+    clone.created_at = source.created_at
+    clone.updated_at = source.updated_at
+    clone.notes_after_session = source.notes_after_session
+    clone.nodes = []
+    for node in source.nodes:
+        clone.nodes.append(TherapyModels.ScenarioNode.new(node.id, node.order_index, node.word_id))
+    return clone
 
 func _input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_accept") or event is InputEventScreenTouch and event.is_pressed():
@@ -88,6 +214,7 @@ func _evaluate_transcription(text: String) -> void:
     if normalized_input == normalized_target and normalized_target != "":
         active_task["remaining"] = int(active_task.get("remaining", 1)) - 1
         checkpoints[current_checkpoint_index]["remaining"] = active_task["remaining"]
+        session_logger.log_attempt(active_task.get("word_id", ""), true, text)
         if active_task["remaining"] <= 0:
             status_label.text = "Świetnie! Zadanie '%s' ukończone." % active_task.get("word_id", "")
             await _complete_current_checkpoint()
@@ -95,6 +222,7 @@ func _evaluate_transcription(text: String) -> void:
             status_label.text = "Dobrze! Powtórz jeszcze %d razy." % active_task["remaining"]
             prompt_label.text = "Powiedz ponownie: %s (%d)" % [active_task.get("target_text", ""), active_task["remaining"]]
     else:
+        session_logger.log_attempt(active_task.get("word_id", ""), false, text)
         status_label.text = "Spróbuj ponownie. Pies siada."
         await dog.play_sit_feedback()
         prompt_label.text = _current_prompt()
@@ -193,11 +321,14 @@ func _current_prompt() -> String:
     return "Powiedz: %s (%d)" % [active_task.get("target_text", ""), active_task.get("remaining", 1)]
 
 func _default_tasks() -> Array:
-    return [
-        {"word_id": "mama", "text": "mama", "repetitions": 2},
-        {"word_id": "lama", "text": "lama", "repetitions": 1},
-        {"word_id": "rama", "text": "rama", "repetitions": 2},
-    ]
+    var tasks: Array = []
+    for data in DEFAULT_WORDS:
+        tasks.append({
+            "word_id": data["word_id"],
+            "text": data["text"],
+            "repetitions": data["repetitions"],
+        })
+    return tasks
 
 func _cell_to_global(cell: Vector2i) -> Vector2:
     return tile_map.to_global(tile_map.map_to_local(cell))

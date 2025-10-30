@@ -1,0 +1,136 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/scenario_editor.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/PathNode.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/ui/word_list.gd" id="3"]
+
+[node name="ScenarioEditor" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+
+[node name="Content" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+size_flags_vertical = 3
+
+[node name="WordLibrary" type="VBoxContainer" parent="MarginContainer/VBoxContainer/Content"]
+custom_minimum_size = Vector2(240, 0)
+size_flags_vertical = 3
+
+[node name="WordsLabel" type="Label" parent="MarginContainer/VBoxContainer/Content/WordLibrary"]
+text = "Biblioteka słów"
+
+[node name="WordsList" type="ItemList" parent="MarginContainer/VBoxContainer/Content/WordLibrary"]
+custom_minimum_size = Vector2(0, 240)
+size_flags_vertical = 3
+script = ExtResource("3")
+
+[node name="ReloadWords" type="Button" parent="MarginContainer/VBoxContainer/Content/WordLibrary"]
+text = "Odśwież"
+
+[node name="ScenarioDetails" type="VBoxContainer" parent="MarginContainer/VBoxContainer/Content"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Form" type="GridContainer" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails"]
+columns = 2
+
+[node name="IdLabel" type="Label" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+text = "Identyfikator"
+
+[node name="IdInput" type="LineEdit" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+placeholder_text = "np. scn_mama"
+
+[node name="NameLabel" type="Label" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+text = "Nazwa"
+
+[node name="NameInput" type="LineEdit" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+placeholder_text = "Ścieżka labiryntu"
+
+[node name="DifficultyLabel" type="Label" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+text = "Poziom trudności"
+
+[node name="Difficulty" type="SpinBox" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+
+[node name="NotesLabel" type="Label" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+text = "Notatki po sesji"
+
+[node name="Notes" type="TextEdit" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Form"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 120)
+
+[node name="Buttons" type="HBoxContainer" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails"]
+
+[node name="SaveScenario" type="Button" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Buttons"]
+text = "Zapisz scenariusz"
+
+[node name="ExportJSON" type="Button" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Buttons"]
+text = "Eksport JSON"
+
+[node name="ExportCSV" type="Button" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/Buttons"]
+text = "Eksport CSV"
+
+[node name="VersionsPanel" type="VBoxContainer" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails"]
+custom_minimum_size = Vector2(0, 140)
+
+[node name="VersionsLabel" type="Label" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/VersionsPanel"]
+text = "Archiwum wersji"
+
+[node name="VersionsList" type="ItemList" parent="MarginContainer/VBoxContainer/Content/ScenarioDetails/VersionsPanel"]
+size_flags_vertical = 3
+
+[node name="LabyrinthPanel" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LabyrinthContent" type="VBoxContainer" parent="MarginContainer/VBoxContainer/LabyrinthPanel"]
+size_flags_vertical = 3
+
+[node name="Toolbar" type="HBoxContainer" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent"]
+
+[node name="LabyrinthLabel" type="Label" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent/Toolbar"]
+text = "Ścieżka labiryntu"
+size_flags_horizontal = 3
+
+[node name="AddNode" type="Button" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent/Toolbar"]
+text = "Dodaj węzeł"
+
+[node name="ClearNodes" type="Button" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent/Toolbar"]
+text = "Wyczyść"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent"]
+size_flags_vertical = 3
+
+[node name="Grid" type="GridContainer" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent/ScrollContainer"]
+columns = 4
+size_flags_horizontal = 3
+
+[node name="PathOrderLabel" type="Label" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent"]
+text = "Kolejność przejścia"
+
+[node name="PathOrder" type="ItemList" parent="MarginContainer/VBoxContainer/LabyrinthPanel/LabyrinthContent"]
+size_flags_vertical = 2
+custom_minimum_size = Vector2(0, 160)
+
+[node name="StatusBar" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 32)
+
+[node name="StatusLabel" type="Label" parent="MarginContainer/VBoxContainer/StatusBar"]
+text = "Gotowe"
+size_flags_horizontal = 3
