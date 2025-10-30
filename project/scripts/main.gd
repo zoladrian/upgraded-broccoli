@@ -37,11 +37,14 @@ var active_task: Dictionary = {}
 var current_path_index := 0
 var pending_checkpoint_index := -1
 var pending_path_index := 0
+var last_evaluation: Dictionary = {}
+var last_transcription := ""
 
 var _floor_source_id := -1
 var _wall_source_id := -1
 
 func _ready() -> void:
+    speech_pipeline = SpeechPipeline.new()
     speech_service.events.connect(_on_speech_event)
     speech_service.initialize()
     dog.path_completed.connect(_on_dog_path_completed)
@@ -95,6 +98,7 @@ func _build_labyrinth_for_scenario() -> void:
     _configure_tiles()
     _build_labyrinth_tiles(labyrinth_data.get("grid", []))
     _prepare_initial_state()
+    _update_manual_controls(true)
 
 func _tasks_from_scenario(scenario: TherapyModels.Scenario) -> Array:
     var tasks: Array = []
@@ -173,13 +177,16 @@ func _input(event: InputEvent) -> void:
 func _on_speech_event(event: Dictionary) -> void:
     match event.get("type"):
         "transcription":
-            status_label.text = "Rozpoznano: %s" % event.get("text", "")
-            await _evaluate_transcription(event.get("text", ""))
+            last_transcription = event.get("text", "")
+            status_label.text = "Rozpoznano: %s" % last_transcription
+            await _evaluate_transcription(last_transcription)
         "error":
             status_label.text = "Błąd: %s" % event.get("message", "unknown")
         "listening":
             recognizing = event.get("active", false)
             prompt_label.text = recognizing ? "Mów teraz..." : _current_prompt()
+            if recognizing:
+                _update_manual_controls(true)
         "tts_complete":
             recognizing = false
 
@@ -192,6 +199,7 @@ func _prepare_initial_state() -> void:
     if checkpoints.is_empty():
         prompt_label.text = "Brak zadań"
         status_label.text = ""
+        _update_manual_controls(true)
         return
     _reveal_path_segment(0, checkpoints[0]["path_index"])
     _activate_checkpoint(0)
@@ -205,6 +213,8 @@ func _activate_checkpoint(index: int) -> void:
     checkpoints[index] = active_task
     prompt_label.text = "Powiedz: %s (%d powt.)" % [active_task.get("target_text", ""), active_task.get("remaining", 1)]
     status_label.text = "Naciśnij Enter lub dotknij, aby rozpocząć."
+    last_evaluation.clear()
+    _update_manual_controls(true)
 
 func _evaluate_transcription(text: String) -> void:
     if active_task.is_empty():
@@ -226,6 +236,17 @@ func _evaluate_transcription(text: String) -> void:
         status_label.text = "Spróbuj ponownie. Pies siada."
         await dog.play_sit_feedback()
         prompt_label.text = _current_prompt()
+        last_evaluation.clear()
+        _update_manual_controls(true)
+    else:
+        status_label.text = "Logopeda podtrzymał konieczność poprawy (%s)." % _format_evaluation_summary(last_evaluation)
+        prompt_label.text = _current_prompt()
+
+func _update_manual_controls(disabled: bool) -> void:
+    if manual_accept_button:
+        manual_accept_button.disabled = disabled or active_task.is_empty()
+    if manual_retry_button:
+        manual_retry_button.disabled = disabled or active_task.is_empty()
 
 func _complete_current_checkpoint() -> void:
     active_task.clear()
@@ -266,6 +287,8 @@ func _finish_labyrinth() -> void:
     active_task.clear()
     prompt_label.text = "Labirynt ukończony!"
     status_label.text = "Gratulacje!"
+    last_evaluation.clear()
+    _update_manual_controls(true)
 
 func _configure_tiles() -> void:
     var tile_set := TileSet.new()

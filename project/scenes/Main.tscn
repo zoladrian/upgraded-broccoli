@@ -56,3 +56,16 @@ text = "Edytor scenariuszy"
 
 [node name="ScenarioEditor" parent="UI" instance=ExtResource("4")]
 visible = false
+[node name="ManualControls" type="HBoxContainer" parent="."]
+position = Vector2(-240, 260)
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 16
+
+[node name="ApproveButton" type="Button" parent="ManualControls"]
+size_flags_horizontal = 4
+text = "Zalicz"
+
+[node name="RetryButton" type="Button" parent="ManualControls"]
+size_flags_horizontal = 4
+text = "Popraw"
